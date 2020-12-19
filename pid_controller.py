@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class PIDController:
+class PIDControl:
     def __init__(self, dt=0.01):
 
         self.k_p_V = 0.5
@@ -64,4 +64,41 @@ class PIDController:
         delta_e = np.clip(delta_e, self.delta_e_min, self.delta_e_max)
 
         return np.asarray([delta_e, delta_a, delta_t])
+    
+    
+class PIDGuidance:
+    def __init__(self, dt=0.01):
+
+        self.k_p_head = 0.5
+        self.k_i_head = 0  # Note gain is set to zero for roll channel
+        self.k_d_head = 1
+
+        self.dt = dt
+
+        self.head_r = None
+
+        self.int_head = 0
+
+    def set_reference(self, headRef):
+        self.head_r = headRef
+
+    def reset(self):
+        self.int_head = 0
+
+    def get_action(self, heading, e_head_prev=False):
+        e_head = heading - self.head_r
+        
+        # (integral states are initialized to zero)
+        self.int_head = self.int_head + self.dt * e_head
+
+        # Note the different sign on pitch gains below.
+        # Positive aileron  -> positive roll moment
+        # Positive elevator -> NEGATIVE pitch moment
+        
+        if e_head_prev == False:
+            delta_phi = 0 - self.k_p_head * e_head - self.k_i_head * self.int_head  # PI
+        else:
+            delta_phi = 0 - self.k_p_head * e_head - self.k_i_head * self.int_head  - self.k_d_head * (e_head - e_head_prev)/self.dt# PID
+
+        return delta_phi, e_head
 
